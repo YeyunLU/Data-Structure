@@ -1,0 +1,213 @@
+/* In this assignment, and all future ones, we use Gradle, a
+ * build manager.
+ *
+ * The purpose of build managers like Gradle is to standardize and simplify
+ * the process of managing a Java project. This is useful because different
+ * IDEs like Eclipse or IntelliJ all have different standards and conventions
+ * on how they expect their projects to be structured and organized.
+ *
+ * Having to manage settings for n different IDEs can be a pain, so we
+ * simplify by telling them to all use Gradle instead.
+ *
+ * Other examples of build managers include Ant and Maven.
+ *
+ * You do not need to know anything about Gradle or build managers to complete
+ * this project, but if you're curious and want to learn more, take a look
+ * at guides and documentation on the Gradle website:
+ * https://guides.gradle.org/creating-new-gradle-builds/
+ * https://docs.gradle.org/current/userguide/tutorial_using_tasks.html
+ * https://docs.gradle.org/current/userguide/building_java_projects.html
+ */
+
+// Here, we list some libraries that we use to augment this build script
+// itself.
+plugins {
+    // Use the Java plugin to add support for Java
+    id 'java'
+
+    // Use IDE plugins so we can generate IDE project files
+    id 'eclipse'
+    id 'idea'
+
+    id 'checkstyle'
+    id 'com.adarshr.test-logger' version '1.6.0'
+}
+
+// This sets the version of Gradle we'll be using.
+wrapper {
+    gradleVersion = '5.3.1'
+    distributionType = Wrapper.DistributionType.BIN
+}
+
+// This project uses a few 3rd party libraries. Rather than downloading
+// and installing them manually, which can be highly error-prone, we
+// have Gradle do it for us. In the "repositories" section, we specify
+// where we want to search for these 3rd party packages.
+repositories {
+    // Maven central is a website containing a large collection of
+    // 3rd party libraries. It was originally meant to be used with the
+    // Maven build tool, but it's so comprehensive other build tools decided
+    // to just use this one instead of building a similar website.
+    //
+    // mavenLocal() refers a folder in your computer that contains any
+    // libraries you may have already pre-downloaded; mavenCentral refers to
+    // the actual website.
+    mavenLocal()
+    mavenCentral()
+    maven { url 'https://jitpack.io' }
+}
+
+// Here, we list all the different libraries we plan on using.
+// Gradle will automatically download them from the repositories listed above.
+dependencies {
+    // We use JSoup to parse web pages
+    compile group: 'org.jsoup', name: 'jsoup', version: '1.8.3'
+
+    // We use RE2/J as a drop-in replacement for Java's built-in regex parser.
+    //
+    // RE2/J is more efficient than Java's regex engine in many cases,
+    // but in exchange, is strictly less powerful.
+    //
+    // (More precisely, RE2/J works by building an NFA representing the
+    // regex, but disallows features like backtracking that are not
+    // representable using a regular language.)
+    compile group: 'com.google.re2j', name: 're2j', version: '1.1'
+
+    // We use HTTPClient class in particular to fetch content from the internet
+    // within our scraper.
+    compile group: 'org.apache.httpcomponents', name: 'httpclient', version: '4.5.3'
+
+    // We use this mainly within the scraper to slightly simplify code for
+    // generating hashes and checksums.
+    compile group: 'commons-codec', name: 'commons-codec', version: '1.10'
+
+    compile group: 'com.github.chimbori', name: 'crux', version: 'v2.0.1'
+
+    // We use this library for the web backend of our search engine.
+    compile group: 'com.sparkjava', name: 'spark-core', version: '2.6.0'
+
+    // We use mustache as our HTML templating engine.
+    compile group: 'com.sparkjava', name: 'spark-template-mustache', version: '2.5.5'
+
+    // Some of our libraries provide hooks to do logging. If we don't set up
+    // code to interact with those hooks, we get a warning message which is mildly annoying
+    compile group: 'org.slf4j', name: 'slf4j-nop', version: '1.7.25'
+
+    // We use jUnit to help us write tests.
+    testCompile group: 'junit', name: 'junit', version: '4.12'
+}
+
+// Configure support to make this a command-line app
+apply plugin: 'application'
+mainClassName = 'noodle.Main'
+
+run {
+    standardInput = System.in
+}
+
+// Generate javadocs
+task generateDocs(type: Javadoc) {
+    source = sourceSets.main.allJava
+    classpath = sourceSets.main.compileClasspath
+    options.links('http://docs.oracle.com/javase/8/docs/api/')
+}
+
+// Enable warnings
+allprojects {
+    gradle.projectsEvaluated {
+        tasks.withType(JavaCompile) {
+            options.compilerArgs << '-Xlint:unchecked' << '-Xlint:deprecation'
+        }
+    }
+}
+
+testlogger {
+    theme 'standard'
+    showExceptions false
+    showSummary false
+    slowThreshold 60000
+    showStandardStreams false
+    showPassedStandardStreams false
+    showSkippedStandardStreams false
+    showFailedStandardStreams false
+}
+
+test {
+    def profileString = System.properties['test.profile'] ?: ''
+    def profiles = profileString.split(',')
+    if ('hw2' in profiles) {
+        include 'datastructures/TestDoubleLinkedList*'
+        include 'datastructures/dictionaries/TestArrayDictionary*'
+    }
+    if ('hw3' in profiles) {
+        include 'datastructures/dictionaries/TestArrayDictionary*'
+        include 'datastructures/dictionaries/TestChainedHashDictionary*'
+        include 'datastructures/TestChainedHashSet*'
+    }
+    if ('hw5p1' in profiles || 'hw5' in profiles) {
+        include 'datastructures/TestArrayHeap*'
+        include 'misc/TestSorter*'
+    }
+    if ('hw5p2' in profiles || 'hw5' in profiles) {
+        include 'search/TestTfIdfAnalyzer*'
+        include 'search/TestPageRankAnalyzer*'
+    }
+    if ('custom' in profiles) {
+        include '**/Test*Custom*'
+    }
+
+    reports {
+        html.enabled = false
+        junitXml.enabled = false
+    }
+}
+
+checkstyle {
+    toolVersion = '8.2'
+}
+
+checkstyleMain {
+    def profileString = System.properties['test.profile'] ?: ''
+    def profiles = profileString.split(',')
+    if ('hw2' in profiles) {
+        include 'datastructures/concrete/DoubleLinkedList.java'
+        include 'datastructures/concrete/dictionaries/ArrayDictionary.java'
+    }
+    if ('hw4' in profiles) {
+        include 'datastructures/concrete/dictionaries/ArrayDictionary.java'
+        include 'datastructures/concrete/dictionaries/ChainedHashDictionary.java'
+        include 'datastructures/concrete/ChainedHashSet.java'
+    }
+    if ('hw5p1' in profiles || 'hw5' in profiles) {
+        include 'datastructures/concrete/ArrayHeap.java'
+        include 'misc/Sorter.java'
+    }
+    if ('hw5p2' in profiles || 'hw5' in profiles) {
+        include 'search/analyzers/TfIdfAnalyzer.java'
+        include 'search/analyzers/PageRankAnalyzer.java'
+    }
+
+    reports {
+        html.enabled = false
+        xml.enabled = false
+    }
+}
+
+checkstyleTest {
+    def profileString = System.properties['test.profile'] ?: ''
+    def profiles = profileString.split(',')
+    def included = false
+    if ('hw5p1' in profiles || 'hw5' in profiles) {
+        included = true
+        include 'datastructures/TestArrayHeap.java'
+        include 'misc/TestSorter.java'
+    }
+    if (!included && ('hw2' in profiles || 'hw4' in profiles || 'hw5p2' in profiles)) {
+        exclude '*'
+    }
+
+    reports {
+        html.enabled = false
+        xml.enabled = false
+    }
+}
