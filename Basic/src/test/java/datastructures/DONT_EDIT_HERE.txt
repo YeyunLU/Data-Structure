@@ -1,0 +1,5 @@
+As mentioned in the spec:
+
+DON'T (permanently) EDIT ANYTHING IN THIS FOLDER.
+
+Feel free to look around though. You can also add debug printing info or temporarily test more cases.

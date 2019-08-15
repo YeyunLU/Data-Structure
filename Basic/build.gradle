@@ -1,0 +1,131 @@
+/* In this assignment, and all future ones, we are using Gradle, a
+ * build manager.
+ *
+ * The purpose of build managers like Gradle is to standardize and simplify
+ * the process of managing a Java project. This is useful because different
+ * IDEs like Eclipse or IntelliJ all have different standards and conventions
+ * on how they expect their projects to be structured and organized.
+ *
+ * Having to manage settings for n different IDEs can be a pain, so we
+ * simplify by telling them to all use Gradle instead.
+ *
+ * Other examples of build managers include Ant or Maven.
+ *
+ * You do not need to know anything about Gradle or build managers to complete
+ * this project, but if you're curious and want to learn more, take a look
+ * at the Java Quickstart chapter in the Gradle user guide:
+ * https://docs.gradle.org/3.1/userguide/tutorial_java_projects.html
+ */
+
+// Apply the java plugin to add support for Java
+apply plugin: 'java'
+
+// Apply the 'eclipse' plugin so we can generate Eclipse project files
+apply plugin: 'eclipse'
+
+// Apply the 'idea' plugin so we can generate IntelliJ project files
+apply plugin: 'idea'
+
+apply plugin: 'checkstyle'
+
+// This project uses a few 3rd party libraries. Rather then downloading
+// and installing them manually, which can be highly error-prone, we
+// have Gradle do it for us. In the "repositories" section, we specify
+// where we want to search for these 3rd party packages.
+repositories {
+    // Maven central is a website containing a large collection of
+    // 3rd party libraries. It was originally meant to be used with the
+    // Maven build tool, but it's so comprehensive other build tools decided
+    // to just use this one instead of building a similar website.
+    //
+    // mavenLocal() refers a folder in your computer that contains any
+    // libraries you may have already pre-downloaded; mavenCentral refers to
+    // the actual website.
+    mavenLocal()
+    mavenCentral()
+}
+
+// Here, we list all the different libraries we plan on using.
+// Gradle will automatically download them from the repositories listed above.
+dependencies {
+    // We use jol to help us extract the approximate size of Java objects
+    compile group: 'org.openjdk.jol', name: 'jol-core', version: '0.9'
+
+    // We use jUnit to help us write tests.
+    testCompile group: 'junit', name: 'junit', version: '4.12'
+}
+
+// Here, we list some libraries that we use to augment this build script
+// itself. Currently, we're augmenting gradle to make it easier for us
+// to build and run GUI programs.
+buildscript {
+    repositories {
+        mavenLocal()
+        mavenCentral()
+        maven {
+            url 'https://plugins.gradle.org/m2/'
+        }
+    }
+    dependencies {
+        classpath 'com.adarshr:gradle-test-logger-plugin:1.5.0'
+    }
+
+}
+
+apply plugin: 'com.adarshr.test-logger'
+
+// Generate javadocs
+task generateDocs(type: Javadoc) {
+    source = sourceSets.main.allJava
+    classpath = sourceSets.main.compileClasspath
+    options.links('http://docs.oracle.com/javase/8/docs/api/')
+}
+
+// Enable warnings
+allprojects {
+    gradle.projectsEvaluated {
+        tasks.withType(JavaCompile) {
+            options.compilerArgs << "-Xlint:unchecked" << "-Xlint:deprecation"
+        }
+    }
+}
+
+
+testlogger {
+    theme 'standard'
+    showExceptions false
+    showSummary false
+    slowThreshold 60000
+    showStandardStreams false
+    showPassedStandardStreams false
+    showSkippedStandardStreams false
+    showFailedStandardStreams false
+}
+
+// Log stdout and stderr in tests
+test {
+    testLogging {
+        events = ["passed", "skipped", "failed"]
+        showStandardStreams = false
+        exceptionFormat = "full"
+    }
+
+    reports {
+        html.enabled = false
+        junitXml.enabled = false
+    }
+}
+
+checkstyle {
+    toolVersion = '8.2'
+}
+
+checkstyleMain {
+    source ='src/'
+
+    reports {
+        html.enabled = false
+        xml.enabled = false
+    }
+}
+
